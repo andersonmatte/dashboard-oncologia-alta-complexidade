@@ -1,0 +1,226 @@
+---
+title: "Dashboard - Hospitais de Alta Complexidade em Oncologia (SUS)"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: scroll
+runtime: shiny    
+---
+
+<style>
+.titulo-central {
+  text-align: center;
+  font-weight: bold;
+  font-size: 18px;
+}
+</style>
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(DT)
+library(plotly)
+library(scales)
+
+dados <- read.csv("ccmhhcac.csv", stringsAsFactors = FALSE)
+
+dados$sg_uf <- trimws(dados$sg_uf)
+
+dados <- dados %>%
+  mutate(
+    vl_indicador_calculado_mun = as.numeric(vl_indicador_calculado_mun),
+    vl_indicador_calculado_uf = as.numeric(vl_indicador_calculado_uf),
+    vl_indicador_calculado_reg = as.numeric(vl_indicador_calculado_reg),
+    vl_indicador_calculado_br = as.numeric(vl_indicador_calculado_br)
+  )
+
+dados_base <- dados %>%
+  distinct(
+    sg_uf,
+    no_uf,
+    no_municipio,
+    no_regiao_brasil,
+    vl_indicador_calculado_mun,
+    vl_indicador_calculado_uf,
+    vl_indicador_calculado_reg,
+    vl_indicador_calculado_br
+  )
+```
+
+Row { data-height=280}
+-------------------------------------
+
+###  {data-width=300}
+
+```{r}
+fluidRow(
+  column(4,
+    selectizeInput(
+  "uf",
+  "Estado (UF):",
+  choices = c("Todos", sort(unique(dados_base$sg_uf))),
+  selected = "Todos"
+)
+  ),
+  column(8,
+    selectizeInput(
+  "municipio",
+  "Município:",
+  choices = c("Todos"),
+  selected = "Todos"
+)
+  )
+)
+```
+
+```{r}
+observe({
+  req(input$uf)
+
+  df <- dados_base %>%
+    filter(input$uf == "Todos" | sg_uf == input$uf)
+
+  updateSelectInput(
+    session,
+    "municipio",
+    choices = c("Todos", sort(unique(df$no_municipio))),
+    selected = "Todos"
+  )
+})
+```
+
+### Brasil {data-width=200}
+
+```{r}
+renderValueBox({
+  total <- dados_base %>%
+    distinct(vl_indicador_calculado_br) %>%
+    pull() %>% first()
+
+  valueBox(
+    paste0(comma(total), " no Brasil"),
+    caption = NULL,
+    icon = "fa-hospital",
+    color = "primary"
+  )
+})
+```
+
+### Estado {data-width=200}
+
+```{r}
+renderValueBox({
+  req(input$uf)
+
+  total <- dados_base %>%
+    filter(input$uf == "Todos" | sg_uf == input$uf) %>%
+    distinct(sg_uf, vl_indicador_calculado_uf) %>%
+    summarise(total = sum(vl_indicador_calculado_uf)) %>%
+    pull(total)
+
+  valueBox(
+    paste0(comma(total), " no Estado"),
+    caption = NULL,
+    icon = "fa-map",
+    color = "green"
+  )
+})
+```
+
+### Município {data-width=200}
+
+```{r}
+renderValueBox({
+  req(input$uf, input$municipio)
+
+  total <- dados_base %>%
+    filter(
+      (input$uf == "Todos" | sg_uf == input$uf),
+      (input$municipio == "Todos" | no_municipio == input$municipio)
+    ) %>%
+    group_by(no_municipio) %>%
+    summarise(valor = max(vl_indicador_calculado_mun), .groups = "drop") %>%
+    summarise(total = sum(valor)) %>%
+    pull(total)
+
+  valueBox(
+    paste0(comma(total), " no Município"),
+    caption = NULL,
+    icon = "fa-city",
+    color = "orange"
+  )
+})
+```
+
+Row
+-------------------------------------
+
+### <span class="titulo-central">Hospitais por Estado</span>
+
+```{r}
+renderPlotly({
+  df <- dados_base %>%
+    distinct(sg_uf, vl_indicador_calculado_uf)
+
+  plot_ly(
+    df,
+    x = ~sg_uf,
+    y = ~vl_indicador_calculado_uf,
+    type = "bar"
+  ) %>%
+    layout(
+      title = "",
+      xaxis = list(title = "Estado (UF)"),
+      yaxis = list(title = "Quantidade de Hospitais")
+    )
+})
+```
+
+### <span class="titulo-central">Top Municípios</span>
+
+```{r}
+renderPlotly({
+  req(input$uf)
+
+  df <- dados_base %>%
+    filter(input$uf == "Todos" | sg_uf == input$uf) %>%
+    group_by(no_municipio) %>%
+    summarise(total = max(vl_indicador_calculado_mun), .groups = "drop") %>%
+    arrange(desc(total)) %>%
+    head(20)
+
+  plot_ly(
+    df,
+    x = ~reorder(no_municipio, total),
+    y = ~total,
+    type = "bar",
+    hovertemplate = "<b>%{x}</b><br>Hospitais: %{y}<extra></extra>"
+  ) %>%
+    layout(
+      title = "",
+      xaxis = list(title = "Município"),
+      yaxis = list(title = "Quantidade de Hospitais", tickformat = ",d")
+    )
+})
+```
+
+### <span class="titulo-central">Distribuição por Região</span>
+
+```{r}
+renderPlotly({
+  df <- dados_base %>%
+    distinct(no_regiao_brasil, vl_indicador_calculado_reg)
+
+  plot_ly(
+    df,
+    labels = ~no_regiao_brasil,
+    values = ~vl_indicador_calculado_reg,
+    type = "pie",
+    textinfo = "label+percent",
+    hovertemplate = "<b>%{label}</b><br>Hospitais: %{value}<extra></extra>"
+  ) %>%
+    layout(
+      title = "Distribuição de Hospitais por Região"
+    )
+})
+```
