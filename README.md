@@ -34,6 +34,12 @@ https://webmatte.shinyapps.io/dashboard/
 
 ---
 
+## 🖼️ Preview do Dashboard
+
+![Dashboard de Dengue](dashboard.png)
+
+---
+
 ## 📁 Repositório do Projeto
 
 Código-fonte disponível em:
