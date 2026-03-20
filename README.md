@@ -36,7 +36,7 @@ https://webmatte.shinyapps.io/dashboard/
 
 ## 🖼️ Preview do Dashboard
 
-![Dashboard de Dengue](dashboard.png)
+![Dashboard - Hospitais de Alta Complexidade em Oncologia (SUS)](dashboard.png)
 
 ---
 
