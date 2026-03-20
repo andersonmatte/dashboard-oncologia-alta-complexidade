@@ -93,16 +93,18 @@ observe({
 
 ```{r}
 renderValueBox({
+
   total <- dados_base %>%
-    distinct(vl_indicador_calculado_br) %>%
-    pull() %>% first()
+    distinct(sg_uf, vl_indicador_calculado_uf) %>%
+    summarise(total = sum(vl_indicador_calculado_uf)) %>%
+    pull(total)
 
   valueBox(
-    paste0(comma(total), " no Brasil"),
-    caption = NULL,
+    paste0(total, " no Brasil"),
     icon = "fa-hospital",
     color = "primary"
   )
+
 })
 ```
 
@@ -110,6 +112,7 @@ renderValueBox({
 
 ```{r}
 renderValueBox({
+
   req(input$uf)
 
   total <- dados_base %>%
@@ -119,11 +122,11 @@ renderValueBox({
     pull(total)
 
   valueBox(
-    paste0(comma(total), " no Estado"),
-    caption = NULL,
+    paste0(total, " no Estado"),
     icon = "fa-map",
     color = "green"
   )
+
 })
 ```
 
@@ -131,6 +134,7 @@ renderValueBox({
 
 ```{r}
 renderValueBox({
+
   req(input$uf, input$municipio)
 
   total <- dados_base %>%
@@ -144,11 +148,11 @@ renderValueBox({
     pull(total)
 
   valueBox(
-    paste0(comma(total), " no Município"),
-    caption = NULL,
+    paste0(total, " no Município"),
     icon = "fa-city",
     color = "orange"
   )
+
 })
 ```
 
